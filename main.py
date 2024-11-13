@@ -140,7 +140,7 @@ def setup_weaviate_index(documents):
         client.schema.create_class(class_schema)
 
     # Initialize Weaviate vector store with TinyLlama embeddings
-    vectorstore = Weaviate(client, "BookStackContent", embeddings)
+    vectorstore = Weaviate(client, "BookStackContent", OllamaEmbeddings())
 
     # Add documents to Weaviate, with persistent indexing
     vectorstore.add_documents(documents)
