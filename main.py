@@ -150,7 +150,7 @@ def setup_weaviate_index(documents):
 def setup_qa_chain():
     ollama_llm = Ollama(model="tinyllama", base_url="http://localhost:7896")
     client = weaviate.Client(**WEAVIATE_CONFIG)
-    vectorstore = Weaviate(client, "BookStackContent", OpenAIEmbeddings())
+    vectorstore = Weaviate(client, "BookStackContent", OllamaEmbeddings())
     return RetrievalQA.from_chain_type(llm=ollama_llm, chain_type="stuff", retriever=vectorstore.as_retriever())
 
 # Step 4: Main function to run the application
