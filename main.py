@@ -1,25 +1,112 @@
 import mysql.connector
-from langchain.llms import Ollama
-from langchain.vectorstores import Weaviate
-from langchain.embeddings import OllamaEmbeddings
-from langchain.chains import RetrievalQA
-from langchain.schema import Document
-from mysql.connector import Error
+
 import weaviate
+import weaviate.classes.config as wc
+
+from langchain_ollama import OllamaLLM
+from langchain_ollama import OllamaEmbeddings
+
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+from langchain_openai import OpenAI
+
+import weaviate
+from langchain_weaviate.vectorstores import WeaviateVectorStore
+
+from langchain.chains import RetrievalQA, RetrievalQAWithSourcesChain
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.schema import Document
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+
+from mysql.connector import Error
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Define MySQL database configuration
 MYSQL_CONFIG = {
-    'host': '127.0.0.1:12345', # TODO can ports be done automatically
+    'host': 'localhost', # TODO can ports be done automatically
+    'port': '12345',
     'user': 'bookstack',
-    'password': 'secretpassword', # TODO how to do this securely
+    'password': os.getenv("MYSQL_PASS"), # TODO how to do this securely
     'database': 'bookstack',
 }
 
 # Define Weaviate client configuration
 WEAVIATE_CONFIG = {
-    'url': 'http://localhost:8989',
+    'url': 'http://se-weaviate.aorief.com',
 }
+
+# Created in order to simplify the switch between OpenAI and tinyllama
+class Model():
+    def __init__(self, model_type):
+        match model_type:
+            case "Ollama":
+                OLLAMA_CONFIG = {
+                'url': 'http://localhost:7869'
+                }
+                self.embedding = OllamaEmbeddings(base_url = OLLAMA_CONFIG["url"], model="tinyllama")
+                self.llm = OllamaLLM(model="tinyllama", base_url="http://localhost:7896")
+
+            case "OpenAI":
+                OPENAI_CONFIG = {
+                    'key': os.getenv("OPENAI_KEY") 
+                }
+                self.embedding = OpenAIEmbeddings(model="text-embedding-3-small", api_key=OPENAI_CONFIG['key'])
+                
+                self.llm = ChatOpenAI(
+                                    model="gpt-4o-mini",
+                                    temperature=0,
+                                    max_tokens=None,
+                                    timeout=None,
+                                    max_retries=2,
+                                    api_key=OPENAI_CONFIG['key']
+                                    # organization="...",
+                                    # other params...
+                            )
+
+class Store():
+    def __init__(self, model: Model):
+        ## Create Client
+        self.client = weaviate.connect_to_local(port=8989)
+        self.embeddings = model.embedding
+
+        # TODO consider using multiple vector stores
+        # TODO consider multi tenenancy
+        self.db = WeaviateVectorStore(self.client, embedding=self.embeddings, index_name="Document", text_key="content") 
+    
+    def import_data(self, documents):
+        self.db.add_documents(documents)
+        print("Documents successfully added to Weaviate index.")
+
+    def close_connection(self): # TODO this is probably not correct
+        self.client.close()
+
+class Chain():
+    def __init__(self, model, store):                
+        self.model = model
+        self.store = store
+
+        template = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
+        Question: {question}
+        Context: {context}
+        Answer:
+        """
+        self.prompt = ChatPromptTemplate.from_template(template)
+
+    
+    def get_rag_chain(self):
+        rag_chain = (
+            {"context": self.store.db.as_retriever(), "question": RunnablePassthrough()}
+            | self.prompt
+            | self.model.llm
+            | StrOutputParser()
+        )
+        return rag_chain
+
+        
 
 # Step 1: Connect to MySQL database and fetch data
 def fetch_bookstack_data():
@@ -46,7 +133,7 @@ def fetch_bookstack_data():
             chapters_by_book.setdefault(chapter["book_id"], []).append(chapter)
 
         # Step 3: Fetch all pages and map them by chapter_id
-        cursor.execute("SELECT id, chapter_id, title, content FROM pages;")
+        cursor.execute("SELECT id, chapter_id, name, text FROM pages;")
         pages = cursor.fetchall()
         pages_by_chapter = {}
         for page in pages:
@@ -61,7 +148,7 @@ def fetch_bookstack_data():
             # Add each book as a top-level Document
             book_doc = Document(
                 page_content=book_content,
-                metadata={"type": "book", "title": book_title, "id": book["id"]}
+                metadata={"type": "book", "title": book_title, "book_id": book["id"]}
             )
             documents.append(book_doc)
 
@@ -77,7 +164,7 @@ def fetch_bookstack_data():
                     metadata={
                         "type": "chapter",
                         "title": chapter_title,
-                        "id": chapter["id"],
+                        "chapter_id": chapter["id"],
                         "book_id": book["id"]
                     }
                 )
@@ -85,8 +172,8 @@ def fetch_bookstack_data():
 
                 # Include pages under each chapter
                 for page in pages_by_chapter.get(chapter["id"], []):
-                    page_title = page['title']
-                    page_content = page['content'] or ""
+                    page_title = page['name']
+                    page_content = page['text'] or ""
                     
                     # Add each page as a Document with metadata linking to its chapter and book
                     page_doc = Document(
@@ -94,7 +181,7 @@ def fetch_bookstack_data():
                         metadata={
                             "type": "page",
                             "title": page_title,
-                            "id": page["id"],
+                            "page_id": page["id"],
                             "chapter_id": chapter["id"],
                             "book_id": book["id"]
                         }
@@ -111,58 +198,20 @@ def fetch_bookstack_data():
 
     return documents
 
-# Step 2: Connect to Weaviate and persist the indexed data
-def setup_weaviate_index(documents):
-    """
-    Sets up a Weaviate index with the TinyLlama embeddings for the BookStack content.
-    This function ensures that books, chapters, and pages are structured with metadata
-    that links each document to its respective book and chapter.
-    """
-    client = weaviate.Client(
-        url=WEAVIATE_CONFIG["url"],
-        auth_client_secret=weaviate.AuthApiKey(api_key=WEAVIATE_CONFIG.get("api_key"))
-    )
-    
-    # Define or update the Weaviate schema to reflect hierarchical structure
-    class_schema = {
-        "class": "BookStackContent",
-        "properties": [
-            {"name": "title", "dataType": ["string"]},
-            {"name": "content", "dataType": ["text"]},
-            {"name": "type", "dataType": ["string"]},          # New field to denote book, chapter, or page
-            {"name": "book_id", "dataType": ["string"]},       # Links each document to its book
-            {"name": "chapter_id", "dataType": ["string"]}     # Links pages to their chapters
-        ]
-    }
-    
-    # Check if class already exists; if not, create it
-    if not client.schema.exists("BookStackContent"):
-        client.schema.create_class(class_schema)
 
-    # Initialize Weaviate vector store with TinyLlama embeddings
-    vectorstore = Weaviate(client, "BookStackContent", OllamaEmbeddings())
-
-    # Add documents to Weaviate, with persistent indexing
-    vectorstore.add_documents(documents)
-    print("Documents successfully added to Weaviate index.")
-
-# Step 3: Set up Ollama model with LangChain for querying
-def setup_qa_chain():
-    ollama_llm = Ollama(model="tinyllama", base_url="http://localhost:7896")
-    client = weaviate.Client(**WEAVIATE_CONFIG)
-    vectorstore = Weaviate(client, "BookStackContent", OllamaEmbeddings())
-    return RetrievalQA.from_chain_type(llm=ollama_llm, chain_type="stuff", retriever=vectorstore.as_retriever())
 
 # Step 4: Main function to run the application
 def main():
     # Fetch data from MySQL and store in Weaviate
-    documents = fetch_bookstack_data()
-    if documents:
-        setup_weaviate_index(documents)
-        print("Data successfully ingested into Weaviate index.")
+    
+    model = Model("OpenAI")
+    store = Store(model)
+    
+    #documents = fetch_bookstack_data()
+    #store.import_data(documents)
 
-    # Set up QA chain for querying
-    qa_chain = setup_qa_chain()
+    chain = Chain(model, store)
+    rag = chain.get_rag_chain()
 
     # Run a simple query loop
     print("Ask questions about the BookStack content (type 'exit' to quit):")
@@ -170,8 +219,10 @@ def main():
         query = input("Your question: ")
         if query.lower() == 'exit':
             break
-        answer = qa_chain.run(query)
+        answer =rag.invoke(query)
         print("Answer:", answer)
+    
+    store.close_connection()
 
 if __name__ == "__main__":
-    print("Hello") # Not calling main. Want simple __main__ to test CD pipeline
+    main()
