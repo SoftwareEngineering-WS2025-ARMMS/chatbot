@@ -27,7 +27,7 @@ load_dotenv()
 
 # Define MySQL database configuration
 MYSQL_CONFIG = {
-    'host': 'localhost', # TODO can ports be done automatically
+    'host': '10.150.216.184', # TODO can ports be done automatically
     'port': '12345',
     'user': 'bookstack',
     'password': os.getenv("MYSQL_PASS"), # TODO how to do this securely
