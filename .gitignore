@@ -1,2 +1,5 @@
 .env
 .venv
+docker-compose.yaml
+container-env 
+node_modules
