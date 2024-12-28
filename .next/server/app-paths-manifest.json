@@ -1,5 +1,5 @@
 {
   "/[conditionId]/page": "app/[conditionId]/page.js",
-  "/page": "app/page.js",
-  "/[conditionId]/[responseId]/page": "app/[conditionId]/[responseId]/page.js"
+  "/[conditionId]/[responseId]/page": "app/[conditionId]/[responseId]/page.js",
+  "/page": "app/page.js"
 }
