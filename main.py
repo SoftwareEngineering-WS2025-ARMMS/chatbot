@@ -590,7 +590,7 @@ async def update_valves(pipeline_id: str, form_data: dict):
 
 @app.post("/v1/{pipeline_id}/filter/inlet")
 @app.post("/{pipeline_id}/filter/inlet")
-async def filter_inlet(pipeline_id: str, form_data: FilterForm):
+async def filter_inlet(pipeline_id: str, form_data: FilterForm, request: Request):
     if pipeline_id not in app.state.PIPELINES:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

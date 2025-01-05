@@ -4,11 +4,15 @@ python-multipart==0.0.9
 python-socketio
 grpcio
 
+unstructured==0.6.11
+PyPDF2==3.0.1
+
+
 passlib==1.7.4
 passlib[bcrypt]
 PyJWT[crypto]
 
-httpx
+httpx[http2]
 
 aiohappyeyeballs==2.4.3
 aiohttp==3.11.2

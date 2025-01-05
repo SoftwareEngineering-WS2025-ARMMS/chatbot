@@ -1,5 +1,3 @@
-import mysql.connector
-
 import weaviate
 import weaviate.classes.config as wc
 
@@ -10,7 +8,6 @@ from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai import OpenAI
 
-import weaviate
 from langchain_weaviate.vectorstores import WeaviateVectorStore
 
 from langchain.chains import RetrievalQA, RetrievalQAWithSourcesChain
@@ -18,16 +15,19 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.schema import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import CharacterTextSplitter
+
 
 from blueprints.function_calling_blueprint import Pipeline as FunctionCallingBlueprint
 
-from mysql.connector import Error
-import os
 
 from typing import List, Union, Generator, Iterator, Optional
 from schemas import OpenAIChatMessage
 import os
 import asyncio
+import time
 
 from dotenv import load_dotenv
 
@@ -35,8 +35,42 @@ import requests
 import zipfile
 import io
 
+import jwt
+
+from PyPDF2 import PdfReader
+
+# TODO hot fix, should be removed
+import sqlite3
 
 load_dotenv()
+
+# Generate a signed JWT
+def generate_jwt(user_id):
+    payload = {
+        "id": user_id,  # Include the provided ID
+        "iat": int(time.time()),  # Issued at time
+        "exp": int(time.time()) + 3600,  # Expiration time (1 hour from now)
+    }
+    token = jwt.encode(payload, os.environ["ARMMS_SECRET"], algorithm="HS256")
+    return token
+
+# Send a GET request with the Bearer token
+def send_request(url, user_id):
+    # Generate the JWT
+    token = generate_jwt(user_id)
+    
+    # Set up headers
+    headers = {
+        "Authorization": f"Bearer {token}",
+    }
+    
+    # Send the GET request
+    response = requests.get(url, headers=headers)
+
+    print(f"Response Status: {response.status_code}")
+    print(f"Response Headers: {response.headers}")
+
+    return response
 
 # Created in order to simplify the switch between OpenAI and tinyllama
 class Model():
@@ -74,8 +108,11 @@ class Store():
 
         # TODO consider using multiple vector stores
         # TODO consider multi tenenancy
-        self.db = WeaviateVectorStore(self.client, embedding=self.embeddings, index_name="Document", text_key="content") 
+        # self.db = WeaviateVectorStore(self.client, embedding=self.embeddings, index_name="Document", text_key="content") 
     
+    def from_documents(self, docs):
+        return WeaviateVectorStore.from_documents(docs, self.embeddings, client=self.client)
+
     def import_data(self, documents):
         self.db.add_documents(documents)
         print("Documents successfully added to Weaviate index.")
@@ -96,9 +133,9 @@ class Chain():
         self.prompt = ChatPromptTemplate.from_template(template)
 
     
-    def get_rag_chain(self):
+    def get_rag_chain(self, documents):
         rag_chain = (
-            {"context": self.store.db.as_retriever(), "question": RunnablePassthrough()}
+            {"context": self.store.from_documents(documents).as_retriever(), "question": RunnablePassthrough()}
             | self.prompt
             | self.model.llm
             | StrOutputParser()
@@ -112,26 +149,21 @@ class Pipeline:
 
     def __init__(self):
         pass
-
-    class Valves(FunctionCallingBlueprint.Valves):
-        OpenAI_API_KEY: str = ""
-        pass
         
-
     async def on_startup(self):
         self.model = Model("OpenAI")
         self.store = Store(self.model)
 
         self.chain = Chain(self.model, self.store)
-        self.rag = self.chain.get_rag_chain()
     
     async def on_shutdown(self):
         self.store.close_connection()
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
         print(f"pipe:{__name__}")
-        print(body)
-        print(user)
+
+        # Add user to the body... will be used in the pipe
+        body["user"] = user
 
         return body
 
@@ -141,14 +173,60 @@ class Pipeline:
         # This is where you can add your custom RAG pipeline.
         # Typically, you would retrieve relevant information from your knowledge base and synthesize it to generate a response.
         
-        print(messages)
-        print(user_message)
 
-        answer = self.rag.invoke(user_message)
+        ## Get user
+        user_id = body["user"]["id"]
+        oauth_sub = get_oidc(user_id)[0][0].split("@")[1]
+        print(oauth_sub)
+
+        ## Get Documents related to user
+
+        # Retrieve the ZIP file from the server
+        # TODO more general??
+        response = send_request("http://localhost:5000/download_all", oauth_sub)
+        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
+
+        # Extract PDF files
+        pdf_files = [zip_file.extract(file) for file in zip_file.namelist() if file.endswith('.pdf')]
+
+        # Extract text content from each PDF
+
+        pages = [] 
+        for pdf_path in pdf_files:
+            loader = PyPDFLoader(pdf_path)
+            for page in loader.lazy_load():
+                pages.append(page)
+        
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        docs = text_splitter.split_documents(pages)
+        
+
+        # Perform RAG
+        rag = self.chain.get_rag_chain(docs)
+        answer = rag.invoke(user_message)
         print("Answer:", answer)
 
 
         return answer
+
+# Gets the oauth_sub from the database that matches the openwebui id
+# TODO fix should be added to the open source container itself
+def get_oidc(id):
+    db_file = os.path.join(os.path.dirname(__file__), 'webui.db')
+    connection = sqlite3.connect(db_file)
+    cursor = connection.cursor()
+
+    # Execute the query
+    cursor.execute("Select oauth_sub from user where id = ?", (id,))
+    
+    # Fetch all results
+    results = cursor.fetchall()
+
+    # Close the connection
+    cursor.close()
+    connection.close()
+
+    return results
 
 # Step 4: Main function to run the application
 def main():
