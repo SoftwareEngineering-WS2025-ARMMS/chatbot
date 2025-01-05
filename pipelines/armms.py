@@ -37,12 +37,13 @@ import io
 
 import jwt
 
-from PyPDF2 import PdfReader
-
 # TODO hot fix, should be removed
 import sqlite3
 
 load_dotenv()
+
+STORAGE_SEVER = "http://localhost:5000"
+CACHE_EXPIRY = 1800 # 30 minutes
 
 # Generate a signed JWT
 def generate_jwt(user_id):
@@ -106,12 +107,49 @@ class Store():
         self.client = weaviate.connect_to_local(port=8989) 
         self.embeddings = model.embedding
 
-        # TODO consider using multiple vector stores
-        # TODO consider multi tenenancy
-        # self.db = WeaviateVectorStore(self.client, embedding=self.embeddings, index_name="Document", text_key="content") 
+        # Small Cache for faster responses
+        # TODO will not be needed when only updated documents are received
+        self.cache = {}
     
     def from_documents(self, docs):
         return WeaviateVectorStore.from_documents(docs, self.embeddings, client=self.client)
+
+    def get_retriever(self, oauth_sub):
+        
+        # Check if there is a value in the cache and if it is valid... if so, return it
+        if oauth_sub in self.cache and self.cache[oauth_sub]["exp"] < int(time.time()):
+            return object.as_retriever()
+        
+        print("Nothing found in cache. Retrieving data.")
+        # Retrieve the ZIP file from the server
+        response = send_request(STORAGE_SEVER+"/download_all", oauth_sub)
+        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
+
+        print("Documents retrieved from storage server")
+
+        pdf_files = [zip_file.extract(file) for file in zip_file.namelist() if file.endswith('.pdf')]
+
+        # Extract text content from each PDF
+        pages = [] 
+        for pdf_path in pdf_files:
+            loader = PyPDFLoader(pdf_path)
+            for page in loader.lazy_load():
+                pages.append(page)
+        
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        docs = text_splitter.split_documents(pages)
+
+        db = self.from_documents(docs)
+        print("Documents loaded and ready to to be used.")
+
+        entry = {
+            "exp": int(time.time()) + CACHE_EXPIRY,
+            "db": db
+        }
+
+        self.cache[oauth_sub] = entry
+        return db.as_retriever()
+        
 
     def import_data(self, documents):
         self.db.add_documents(documents)
@@ -133,9 +171,9 @@ class Chain():
         self.prompt = ChatPromptTemplate.from_template(template)
 
     
-    def get_rag_chain(self, documents):
+    def get_rag_chain(self, retriever):
         rag_chain = (
-            {"context": self.store.from_documents(documents).as_retriever(), "question": RunnablePassthrough()}
+            {"context": retriever, "question": RunnablePassthrough()}
             | self.prompt
             | self.model.llm
             | StrOutputParser()
@@ -179,30 +217,10 @@ class Pipeline:
         oauth_sub = get_oidc(user_id)[0][0].split("@")[1]
         print(oauth_sub)
 
-        ## Get Documents related to user
-
-        # Retrieve the ZIP file from the server
-        # TODO more general??
-        response = send_request("http://localhost:5000/download_all", oauth_sub)
-        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
-
-        # Extract PDF files
-        pdf_files = [zip_file.extract(file) for file in zip_file.namelist() if file.endswith('.pdf')]
-
-        # Extract text content from each PDF
-
-        pages = [] 
-        for pdf_path in pdf_files:
-            loader = PyPDFLoader(pdf_path)
-            for page in loader.lazy_load():
-                pages.append(page)
-        
-        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-        docs = text_splitter.split_documents(pages)
-        
+        retriever = self.store.get_retriever(oauth_sub)
 
         # Perform RAG
-        rag = self.chain.get_rag_chain(docs)
+        rag = self.chain.get_rag_chain(retriever)
         answer = rag.invoke(user_message)
         print("Answer:", answer)
 
