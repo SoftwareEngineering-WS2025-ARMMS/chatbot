@@ -117,8 +117,8 @@ class Store():
     def get_retriever(self, oauth_sub):
         
         # Check if there is a value in the cache and if it is valid... if so, return it
-        if oauth_sub in self.cache and self.cache[oauth_sub]["exp"] < int(time.time()):
-            return object.as_retriever()
+        if oauth_sub in self.cache and self.cache[oauth_sub]["exp"] > int(time.time()):
+            return self.cache[oauth_sub]["db"].as_retriever()
         
         print("Nothing found in cache. Retrieving data.")
         # Retrieve the ZIP file from the server
