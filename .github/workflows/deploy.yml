@@ -16,7 +16,7 @@ jobs:
     - name: Stop and Remove Existing Container
       run: |
         if [ "$(docker ps -q -f name=armms-pipeline)" ]; then
-          docker stop armms-pipeline
+          docker kill armms-pipeline
           docker rm armms-pipeline
         fi
     
