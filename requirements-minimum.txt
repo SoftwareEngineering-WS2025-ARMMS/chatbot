@@ -1,6 +1,18 @@
+fastapi==0.111.0
+uvicorn[standard]==0.22.0
+python-multipart==0.0.9
+python-socketio
+grpcio
+
 unstructured==0.6.11
 PyPDF2==3.0.1
 
+
+passlib==1.7.4
+passlib[bcrypt]
+PyJWT[crypto]
+
+httpx[http2]
 
 aiohappyeyeballs==2.4.3
 aiohttp==3.11.2
@@ -22,7 +34,7 @@ grpcio-health-checking==1.68.0
 grpcio-tools==1.68.0
 h11==0.14.0
 httpcore==1.0.7
-httpx[http2]
+httpx==0.27.0
 httpx-sse==0.4.0
 idna==3.10
 jiter==0.7.1
@@ -57,6 +69,7 @@ regex==2024.11.6
 requests==2.32.3
 requests-toolbelt==1.0.0
 setuptools==75.5.0
+simsimd==4.4.0
 sniffio==1.3.1
 SQLAlchemy==2.0.35
 tenacity==9.0.0
@@ -69,67 +82,3 @@ validators==0.34.0
 weaviate==0.1.2
 weaviate-client==4.9.3
 yarl==1.17.1
-
-fastapi==0.111.0
-uvicorn[standard]==0.22.0
-python-multipart==0.0.9
-python-socketio
-grpcio
-
-passlib==1.7.4
-passlib[bcrypt]
-PyJWT[crypto]
-
-httpx
-
-# AI libraries
-openai
-anthropic
-google-generativeai
-vertexai
-
-# Database
-pymongo
-peewee
-SQLAlchemy
-boto3
-redis
-sqlmodel
-chromadb
-psycopg2-binary
-
-# Observability
-langfuse
-ddtrace
-
-# ML libraries
-torch
-numpy
-pandas
-
-xgboost
-scikit-learn
-
-# NLP libraries
-sentence-transformers
-transformers
-tokenizers
-nltk
-tiktoken
-
-# Image processing
-Pillow
-opencv-python
-
-# Visualization
-matplotlib
-seaborn
-
-# Web scraping
-selenium
-playwright
-beautifulsoup4
-
-# Llama Index for RAG
-llama-index
-llama-index-llms-ollama
