@@ -19,6 +19,11 @@ jobs:
           docker stop armms-pipeline
           docker rm armms-pipeline
         fi
+    
+    - name: Add env variables
+      run: |
+        echo "${{ secrets.ARMMS_SECRET }}" >> ./pipelines/.env
+        echo "${{ secrets.OPENAI_KEY }}" >> ./pipelines/.env
 
     - name: Build and Deploy Container
       run: |
