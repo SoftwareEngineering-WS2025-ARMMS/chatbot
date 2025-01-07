@@ -15,13 +15,13 @@ jobs:
 
     - name: Stop and Remove Existing Container
       run: |
-        if [ "$(podman ps -q -f name=armms-pipeline)" ]; then
-          podman stop armms-pipeline
-          podman rm armms-pipeline
+        if [ "$(docker ps -q -f name=armms-pipeline)" ]; then
+          docker stop armms-pipeline
+          docker rm armms-pipeline
         fi
 
     - name: Build and Deploy Container
       run: |
         # A directory should be created
-        podman build -t armms-pipeline .
-        podman run -d -p 9099:9099 --name armms-pipeline --network=host armms-pipeline
+        docker build -t armms-pipeline .
+        docker run -d -p 9099:9099 --name armms-pipeline --network=host armms-pipeline
