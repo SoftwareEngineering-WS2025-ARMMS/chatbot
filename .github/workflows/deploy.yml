@@ -1,0 +1,32 @@
+name: Deploy to Machine
+
+on:
+  push:
+    branches:
+      - feat/prompt_document_alignment  # Replace with your branch name
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H armms-chatbot-ssh.aorief.com >> ~/.ssh/known_hosts
+
+    - name: Deploy Container
+      run: |
+        scp -r . abdelrahmanorief@armms-chatbot-ssh.aorief.com:/deploy/armms-chatbot-pipeline
+        ssh abdelrahmanorief@armms-chatbot-ssh.aorief.com << 'EOF'
+          cd /deploy/armms-chatbot-pipeline
+          sudo docker kill armms-pipeline
+          sudo docker rm armms-pipeline
+          sudo docker build -t armms-pipeline .
+          sudo docker run -d -p 9099:9099 --name armms-pipeline --network=host armms-pipeline
+        EOF
