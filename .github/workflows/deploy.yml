@@ -22,8 +22,7 @@ jobs:
 
     - name: Build and Deploy Container
       run: |
-        # TODO mkdir does not have enough permission
-        cd /repository || mkdir -p /repository && cd /repository
+        # A directory should be created
         cp -R $GITHUB_WORKSPACE/* .
         podman build -t armms-pipeline .
         podman run -d -p 9099:9099 --name armms-pipeline --network=host armms-pipeline
