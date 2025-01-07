@@ -1,32 +1,28 @@
-name: Deploy to Machine
+name: Deploy Chatbot
 
 on:
   push:
     branches:
-      - feat/prompt_document_alignment  # Replace with your branch name
+      - feat/prompt_document_alignment 
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Use the self-hosted runner
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Set up SSH
+    - name: Stop and Remove Existing Container
       run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.CHATBOT_DEPLOYMENT_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H armms-chatbot-ssh.aorief.com >> ~/.ssh/known_hosts
+        if [ "$(docker ps -q -f name=armms-pipeline)" ]; then
+          docker stop armms-pipeline
+          docker rm armms-pipeline
+        fi
 
-    - name: Deploy Container
+    - name: Build and Deploy Container
       run: |
-        scp -r . abdelrahmanorief@armms-chatbot-ssh.aorief.com:/deploy/armms-chatbot-pipeline
-        ssh abdelrahmanorief@armms-chatbot-ssh.aorief.com << 'EOF'
-          cd /deploy/armms-chatbot-pipeline
-          sudo docker kill armms-pipeline
-          sudo docker rm armms-pipeline
-          sudo docker build -t armms-pipeline .
-          sudo docker run -d -p 9099:9099 --name armms-pipeline --network=host armms-pipeline
-        EOF
+        cd /deploy/armms-chatbot-pipeline || mkdir -p /deploy/armms-chatbot-pipeline && cd /deploy/armms-chatbot-pipeline
+        cp -R $GITHUB_WORKSPACE/* .
+        docker build -t armms-pipeline .
+        docker run -d -p 9099:9099 --name armms-pipeline --network=host armms-pipeline
