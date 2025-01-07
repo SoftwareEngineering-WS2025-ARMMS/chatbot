@@ -15,7 +15,7 @@ jobs:
 
     - name: Stop and Remove Existing Container
       run: |
-        if podman ps -q -f name=armms-pipeline; then
+        if [ "$(podman ps -q -f name=armms-pipeline)" ]; then
           podman stop armms-pipeline
           podman rm armms-pipeline
         fi
