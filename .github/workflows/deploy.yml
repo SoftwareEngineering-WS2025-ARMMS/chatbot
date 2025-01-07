@@ -16,7 +16,7 @@ jobs:
     - name: Set up SSH
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_rsa
+        echo "${{ secrets.CHATBOT_DEPLOYMENT_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H armms-chatbot-ssh.aorief.com >> ~/.ssh/known_hosts
 
