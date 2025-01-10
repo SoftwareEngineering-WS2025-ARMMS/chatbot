@@ -37,9 +37,6 @@ import io
 
 import jwt
 
-# TODO hot fix, should be removed
-import sqlite3
-
 load_dotenv()
 
 STORAGE_SEVER = "http://localhost:5000"
@@ -201,8 +198,8 @@ class Pipeline:
         print(f"pipe:{__name__}")
 
         # Add user to the body... will be used in the pipe
-        body["user"] = user
-
+        body["user_additional_info"] = user
+        print(body)
         return body
 
     def pipe(
@@ -212,11 +209,10 @@ class Pipeline:
         # Typically, you would retrieve relevant information from your knowledge base and synthesize it to generate a response.
         
 
-        ## Get user
-        user_id = body["user"]["id"]
-        oauth_sub = get_oidc(user_id)[0][0].split("@")[1]
-        print(oauth_sub)
+        # Get user
+        oauth_sub = body["user_additional_info"]["oauth_sub"].split("@")[1]
 
+        # Restore data
         retriever = self.store.get_retriever(oauth_sub)
 
         # Perform RAG
@@ -226,25 +222,6 @@ class Pipeline:
 
 
         return answer
-
-# Gets the oauth_sub from the database that matches the openwebui id
-# TODO fix should be added to the open source container itself
-def get_oidc(id):
-    db_file = os.path.join(os.path.dirname(__file__), 'webui.db')
-    connection = sqlite3.connect(db_file)
-    cursor = connection.cursor()
-
-    # Execute the query
-    cursor.execute("Select oauth_sub from user where id = ?", (id,))
-    
-    # Fetch all results
-    results = cursor.fetchall()
-
-    # Close the connection
-    cursor.close()
-    connection.close()
-
-    return results
 
 # Step 4: Main function to run the application
 def main():
