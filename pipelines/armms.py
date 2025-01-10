@@ -39,7 +39,7 @@ import jwt
 
 load_dotenv()
 
-STORAGE_SEVER = "http://localhost:5000"
+STORAGE_SEVER = "https://armms-storage.aorief.com"
 CACHE_EXPIRY = 1800 # 30 minutes
 
 # Generate a signed JWT
@@ -119,7 +119,7 @@ class Store():
         
         print("Nothing found in cache. Retrieving data.")
         # Retrieve the ZIP file from the server
-        response = send_request(STORAGE_SEVER+"/download_all", oauth_sub)
+        response = send_request(STORAGE_SEVER+"/download_all/", oauth_sub)
         zip_file = zipfile.ZipFile(io.BytesIO(response.content))
 
         print("Documents retrieved from storage server")
