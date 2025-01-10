@@ -120,6 +120,10 @@ class Store():
         print("Nothing found in cache. Retrieving data.")
         # Retrieve the ZIP file from the server
         response = send_request(STORAGE_SEVER+"/download_all/", oauth_sub)
+
+        if response.status_code != 200:
+            raise RuntimeError("Could not retrieve documents from storage.")
+
         zip_file = zipfile.ZipFile(io.BytesIO(response.content))
 
         print("Documents retrieved from storage server")
@@ -210,10 +214,18 @@ class Pipeline:
         
 
         # Get user
-        oauth_sub = body["user_additional_info"]["oauth_sub"].split("@")[1]
+        oauth_sub = body["user_additional_info"]["oauth_sub"]
+
+        if oauth_sub==None:
+            return "User not signed in with Keycloak"
+        
+        oauth_sub = oauth_sub.split("@")[1]
 
         # Restore data
-        retriever = self.store.get_retriever(oauth_sub)
+        try: 
+            retriever = self.store.get_retriever(oauth_sub)
+        except RuntimeError:
+            return "Could not retrieve files from storage. Have you signed in using the Dashboard?"
 
         # Perform RAG
         rag = self.chain.get_rag_chain(retriever)
