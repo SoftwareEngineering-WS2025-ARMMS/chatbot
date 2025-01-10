@@ -3,7 +3,7 @@ name: Deploy Chatbot
 on:
   push:
     branches:
-      - feat/prompt_document_alignment 
+      - '**'
 
 jobs:
   deploy:
