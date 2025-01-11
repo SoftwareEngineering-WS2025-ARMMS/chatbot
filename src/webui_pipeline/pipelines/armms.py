@@ -74,13 +74,6 @@ def send_request(url, user_id):
 class Model():
     def __init__(self, model_type):
         match model_type:
-            case "Ollama":
-                OLLAMA_CONFIG = {
-                'url': 'http://localhost:7869'
-                }
-                self.embedding = OllamaEmbeddings(base_url = OLLAMA_CONFIG["url"], model="tinyllama")
-                self.llm = OllamaLLM(model="tinyllama", base_url="http://localhost:7896")
-
             case "OpenAI":
                 OPENAI_CONFIG = {
                     'key': os.environ["OPENAI_KEY"]
