@@ -27,8 +27,8 @@ jobs:
     
     - name: Add env variables
       run: |
-        echo "ARMMS_SECRET=${{ secrets.ARMMS_SECRET }}" >> ./pipelines/.env
-        echo "OPENAI_KEY=${{ secrets.OPENAI_KEY }}" >> ./pipelines/.env
+        echo "ARMMS_SECRET=${{ secrets.ARMMS_SECRET }}" >> ./src/webui_pipeline/pipelines/.env
+        echo "OPENAI_KEY=${{ secrets.OPENAI_KEY }}" >> ./src/webui_pipeline/pipelines/.env
 
     - name: Build and Deploy Container
       run: |
