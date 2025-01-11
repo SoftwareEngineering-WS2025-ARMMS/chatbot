@@ -108,11 +108,14 @@ class Store():
         
         # Check if there is a value in the cache and if it is valid... if so, return it
         if oauth_sub in self.cache and self.cache[oauth_sub]["exp"] > int(time.time()):
-            return self.cache[oauth_sub]["db"].as_retriever()
-        
-        print("Nothing found in cache. Retrieving data.")
+            last_update = self.cache[oauth_sub]["last_update"]
+            documents = self.cache[oauth_sub]["docs"]
+        else:
+            last_update = 0
+            documents = []
+
         # Retrieve the ZIP file from the server
-        response = send_request(STORAGE_SEVER+"/download_all", oauth_sub)
+        response = send_request(f"{STORAGE_SEVER}/download_all_after/{time.strftime('%d-%m-%Y-%H:%M:%S', time.gmtime(last_update))}", oauth_sub)
 
         if response.status_code != 200:
             raise RuntimeError("Could not retrieve documents from storage.")
@@ -124,6 +127,10 @@ class Store():
         pdf_files = [zip_file.extract(file) for file in zip_file.namelist() if file.endswith('.pdf')]
 
         # Extract text content from each PDF
+
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+
+        # Extract text content from each PDF
         pages = [] 
         for pdf_path in pdf_files:
             loader = PyPDFLoader(pdf_path)
@@ -133,12 +140,15 @@ class Store():
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
         docs = text_splitter.split_documents(pages)
 
-        db = self.from_documents(docs)
+        documents.extend(docs)
+
+        db = self.from_documents(documents)
         print("Documents loaded and ready to to be used.")
 
         entry = {
             "exp": int(time.time()) + CACHE_EXPIRY,
-            "db": db
+            "last_update": int(time.time()),
+            "docs": documents
         }
 
         self.cache[oauth_sub] = entry
