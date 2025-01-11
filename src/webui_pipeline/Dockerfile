@@ -23,8 +23,8 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Install Python dependencies
-COPY ./requirements.txt .
-COPY ./requirements-minimum.txt .
+COPY ../requirements.txt .
+COPY ../requirements-minimum.txt .
 RUN pip3 install uv
 RUN if [ "$MINIMUM_BUILD" != "true" ]; then \
         if [ "$USE_CUDA_DOCKER" = "true" ]; then \
