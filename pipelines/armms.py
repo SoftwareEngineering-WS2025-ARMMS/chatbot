@@ -235,7 +235,6 @@ class Pipeline:
 
         return answer
 
-# Step 4: Main function to run the application
 def main():
     # Fetch data from MySQL and store in Weaviate
     
