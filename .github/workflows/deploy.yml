@@ -33,5 +33,5 @@ jobs:
     - name: Build and Deploy Container
       run: |
         # A directory should be created
-        docker build -t armms-pipeline .
+        docker build -t armms-pipeline ./src
         docker run -d -p 9099:9099 --name armms-pipeline --network=host armms-pipeline

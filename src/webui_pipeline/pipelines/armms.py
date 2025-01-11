@@ -45,7 +45,7 @@ CACHE_EXPIRY = 1800 # 30 minutes
 # Generate a signed JWT
 def generate_jwt(user_id):
     payload = {
-        "id": user_id,  # Include the provided ID
+        "sub": user_id,  # Include the provided ID
         "iat": int(time.time()),  # Issued at time
         "exp": int(time.time()) + 3600,  # Expiration time (1 hour from now)
     }
@@ -119,7 +119,7 @@ class Store():
         
         print("Nothing found in cache. Retrieving data.")
         # Retrieve the ZIP file from the server
-        response = send_request(STORAGE_SEVER+"/download_all/", oauth_sub)
+        response = send_request(STORAGE_SEVER+"/download_all", oauth_sub)
 
         if response.status_code != 200:
             raise RuntimeError("Could not retrieve documents from storage.")
@@ -212,12 +212,15 @@ class Pipeline:
         # This is where you can add your custom RAG pipeline.
         # Typically, you would retrieve relevant information from your knowledge base and synthesize it to generate a response.
         
+        # Should not happen if Open-WebUI plays nice
+        if not "user_additional_info" in body or "oauth_sub" not in body["user_additional_info"]:
+            return "Error: No user provided by the inlet. This is a severe issue, please contact your administrator."
 
         # Get user
         oauth_sub = body["user_additional_info"]["oauth_sub"]
 
-        if oauth_sub==None:
-            return "User not signed in with Keycloak"
+        if oauth_sub==None or "@" not in oauth_sub:
+            return "Error: Malformed oauth_sub. Please contact your administrator."
         
         oauth_sub = oauth_sub.split("@")[1]
 
@@ -225,7 +228,7 @@ class Pipeline:
         try: 
             retriever = self.store.get_retriever(oauth_sub)
         except RuntimeError:
-            return "Could not retrieve files from storage. Have you signed in using the Dashboard?"
+            return "Error: Could not retrieve files from storage. Have you signed in using the Dashboard?"
 
         # Perform RAG
         rag = self.chain.get_rag_chain(retriever)
