@@ -1,8 +1,5 @@
 # ARMMS Chatbot
 
-> [!TIP]
-> If you already have an Open-WebUI instance running
-
 Chatbot, that downloads, embeds and queries documents from your organization
 
 ## 🔧 How It Works
