@@ -111,7 +111,7 @@ class Store():
         self.cache_expiry = cache_expiry
     
     def from_documents(self, docs):
-        return WeaviateVectorStore.from_documents(docs, self.model.embeddings, client=self.client)
+        return WeaviateVectorStore.from_documents(docs, self.model.embedding, client=self.client)
 
     def get_retriever(self, 
                       oauth_sub,
