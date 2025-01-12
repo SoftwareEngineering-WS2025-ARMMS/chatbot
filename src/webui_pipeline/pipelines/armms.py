@@ -262,7 +262,6 @@ class Pipeline:
         try: 
             retriever = self.store.get_retriever(
                 oauth_sub,
-                self.valves.STORAGE_SERVER,
                 self.valves.ARMMS_SECRET
                 )
         except RuntimeError:
@@ -272,7 +271,6 @@ class Pipeline:
         rag = self.chain.get_rag_chain(retriever)
         answer = rag.invoke(user_message)
         print("Answer:", answer)
-
 
         return answer
 
