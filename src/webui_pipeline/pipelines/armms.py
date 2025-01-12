@@ -18,6 +18,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import CharacterTextSplitter
+from pydantic import BaseModel
 
 
 from blueprints.function_calling_blueprint import Pipeline as FunctionCallingBlueprint
@@ -189,7 +190,14 @@ class Chain():
 # Step 4: Main function to run the application
 class Pipeline:
 
+    class Valves(BaseModel):
+        CACHE_EXPIRY_SECONDS : int = 1800 # 30 minutes
+        STORAGE_SEVER : str
+
+
     def __init__(self):
+        self.Valves = self.Valves()
+        self.update_valves()
         pass
         
     async def on_startup(self):
