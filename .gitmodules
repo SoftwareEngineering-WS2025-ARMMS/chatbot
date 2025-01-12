@@ -1,0 +1,4 @@
+[submodule "src/open-webui"]
+	path = src/open-webui
+	url = git@github.com:SoftwareEngineering-WS2025-ARMMS/open-webui.git
+	branch = add_oauth_to_inlet

@@ -1,0 +1,48 @@
+name: open-webui-dev
+
+services:
+  frontend:
+    build:
+      context: .
+      target: build
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - backend
+    ports:
+      - "8761:5173"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./src/open-webui/src:/app/src
+
+  backend:
+    build:
+      context: .
+      target: base
+    command: ["bash", "dev.sh"]
+    env_file: ".env"
+    environment:
+      - ENV=dev
+      - WEBUI_AUTH=True
+      - WEBUI_NAME=ARMMS AI
+      - WEBUI_URL=${WEBUI_URL}
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - OPENID_PROVIDER_URL=${OPENID_PROVIDER_URL}
+      - OAUTH_PROVIDER_NAME=${OAUTH_PROVIDER_NAME}
+      - ENABLE_OAUTH_SIGNUP=true
+    ports:
+      - "8760:8080"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    volumes:
+      - ./src/open-webui/backend:/app/backend
+      - openwebui_data:/app/backend/data
+
+volumes:
+  openwebui_data: {}
