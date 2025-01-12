@@ -2,29 +2,12 @@
   <a href="#"><img src="./docs/images/header.png" alt="Pipelines Logo"></a>
 </p>
 
-# Pipelines: UI-Agnostic OpenAI API Plugin Framework
+# ARMMS Chatbot
 
 > [!TIP]
-> If your goal is simply to add support for additional providers like Anthropic or basic filters, you likely don't need Pipelines . For those cases, Open WebUI Functions are a better fit—it's built-in, much more convenient, and easier to configure. Pipelines, however, comes into play when you're dealing with computationally heavy tasks (e.g., running large models or complex logic) that you want to offload from your main Open WebUI instance for better performance and scalability.
+> If you already have an Open-WebUI instance running
 
-
-Welcome to **Pipelines**, an [Open WebUI](https://github.com/open-webui) initiative. Pipelines bring modular, customizable workflows to any UI client supporting OpenAI API specs – and much more! Easily extend functionalities, integrate unique logic, and create dynamic workflows with just a few lines of code.
-
-## 🚀 Why Choose Pipelines?
-
-- **Limitless Possibilities:** Easily add custom logic and integrate Python libraries, from AI agents to home automation APIs.
-- **Seamless Integration:** Compatible with any UI/client supporting OpenAI API specs. (Only pipe-type pipelines are supported; filter types require clients with Pipelines support.)
-- **Custom Hooks:** Build and integrate custom pipelines.
-
-### Examples of What You Can Achieve:
-
-- [**Function Calling Pipeline**](/examples/filters/function_calling_filter_pipeline.py): Easily handle function calls and enhance your applications with custom logic.
-- [**Custom RAG Pipeline**](/examples/pipelines/rag/llamaindex_pipeline.py): Implement sophisticated Retrieval-Augmented Generation pipelines tailored to your needs.
-- [**Message Monitoring Using Langfuse**](/examples/filters/langfuse_filter_pipeline.py): Monitor and analyze message interactions in real-time using Langfuse.
-- [**Rate Limit Filter**](/examples/filters/rate_limit_filter_pipeline.py): Control the flow of requests to prevent exceeding rate limits.
-- [**Real-Time Translation Filter with LibreTranslate**](/examples/filters/libretranslate_filter_pipeline.py): Seamlessly integrate real-time translations into your LLM interactions.
-- [**Toxic Message Filter**](/examples/filters/detoxify_filter_pipeline.py): Implement filters to detect and handle toxic messages effectively.
-- **And Much More!**: The sky is the limit for what you can accomplish with Pipelines and Python. [Check out our scaffolds](/examples/scaffolds) to get a head start on your projects and see how you can streamline your development process!
+Chatbot, that downloads, embeds and queries documents from your organization
 
 ## 🔧 How It Works
 
@@ -32,87 +15,109 @@ Welcome to **Pipelines**, an [Open WebUI](https://github.com/open-webui) initiat
   <a href="./docs/images/workflow.png"><img src="./docs/images/workflow.png" alt="Pipelines Workflow"></a>
 </p>
 
-Integrating Pipelines with any OpenAI API-compatible UI client is simple. Launch your Pipelines instance and set the OpenAI URL on your client to the Pipelines URL. That's it! You're ready to leverage any Python library for your needs.
+The Chatbot works by getting user queries from the Open-WebUI frontend, downloading the latest documents from your storage engine, embedding them into Weaviate to find relevant answers and using a generator model (here OpenAI) to formulate a response!
 
-## ⚡ Quick Start with Docker
+## 📂 Directory Structure
 
-> [!WARNING]
-> Pipelines are a plugin system with arbitrary code execution — **don't fetch random pipelines from sources you don't trust**.
+The `/src` directory includes two folders: `open-webui` and `webui_pipeline`. `open-webui` is the interface with which you can communicate with the chatbot. The actual chatbot is implemented as an Open-WebUI pipeline and can be found `ẁebui_pipeline`
+
+> [!NOTE]
+> 
+> open-webui is included as a git submodule. On information regarding how to clone and download it, see the next section
+
+## ⚡ Install & Run
 
 For a streamlined setup using Docker:
 
-1. **Run the Pipelines container:**
-
-   ```sh
-   docker run -d -p 9099:9099 --add-host=host.docker.internal:host-gateway -v pipelines:/app/pipelines --name pipelines --restart always ghcr.io/open-webui/pipelines:main
-   ```
-
-2. **Connect to Open WebUI:**
-
-   - Navigate to the **Settings > Connections > OpenAI API** section in Open WebUI.
-   - Set the API URL to `http://localhost:9099` and the API key to `0p3n-w3bu!`. Your pipelines should now be active.
-
-> [!NOTE]
-> If your Open WebUI is running in a Docker container, replace `localhost` with `host.docker.internal` in the API URL.
-
-3. **Manage Configurations:**
-
-   - In the admin panel, go to **Admin Settings > Pipelines tab**.
-   - Select your desired pipeline and modify the valve values directly from the WebUI.
-
-> [!TIP]
-> If you are unable to connect, it is most likely a Docker networking issue. We encourage you to troubleshoot on your own and share your methods and solutions in the discussions forum.
-
-If you need to install a custom pipeline with additional dependencies:
-
-- **Run the following command:**
-
-  ```sh
-  docker run -d -p 9099:9099 --add-host=host.docker.internal:host-gateway -e PIPELINES_URLS="https://github.com/open-webui/pipelines/blob/main/examples/filters/detoxify_filter_pipeline.py" -v pipelines:/app/pipelines --name pipelines --restart always ghcr.io/open-webui/pipelines:main
+1. **Clone the repository**
+  
+  ```shell
+  git clone --recurse-submodules git@github.com:SoftwareEngineering-WS2025-ARMMS/chatbot.git
   ```
+  
+2. **Configure environment variables
+  
+  In order to properly connect with the other's platform components you need to configure Open-WebUI and the Chatbot correctly. Follow the following steps
+  
+  In `./compose-openwebui` provide information regarding your where you want to host Open-WebUI, its secret and the connections Keycloak. The variables that should be changed are:
+  
+  ```
+  - WEBUI_URL=${WEBUI_URL} # Where are you hosting Open-WebUI
+  - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY} # Configure a secret
+  - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} # Keycloak Client ID
+  - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} # Keycloak Client secret
+  - OPENID_PROVIDER_URL=${OPENID_PROVIDER_URL} # Keycloak Provider URL
+  ```
+  
+  Now configure the Chatbot. Create the file `./src/webui_pipeline/pipelines/.env` and configure the following variables
+  
+  ```
+  OPENAI_KEY=<OPENAI_KEY>
+  STORAGE_SERVER=<STORAGE_SERVER>
+  ARMMS_SECRET=<ARMMS_SECRET>
+  WEAVIATE_PORT=<WEAVIATE_PORT>
+  CACHE_EXPIRY_SECONDS=<CACHE_EXPIRY_SECONDS> 
+  ```
+  
+  - OPENAI_KEY is your API key provided by OpenAI
+    
+  - STORAGE_SERVER is where you are hosting file-dashboard-be
+    
+  - ARMMS_SECRET is an organisation secret used for signing JWT tokens. It should have the same value as the one provided to your Storage Engine
+    
+  - WEAVIATE_PORT is where you are hosting weaviate locally. Default is 8989.
+    
+  - CACHE_EXPIRY_SECONDS is the duration for which a document is maximally held in the cache, in seconds.
+    
+  
+  > [!NOTE]
+  > 
+  > If you wish to reconfigure these variables after you deployed your application, you can do that directly from the Open-WebUI interface. See step 5 for more information
+  
+  Open-WebUI:
+  
+  ```sh
+  docker run -d -p 9099:9099 --add-host=host.docker.internal:host-gateway -v pipelines:/app/pipelines --name pipelines --restart always ghcr.io/open-webui/pipelines:main
+  ```
+  
+  ```sh
+  docker run -d -p 9099:9099 --add-host=host.docker.internal:host-gateway -v pipelines:/app/pipelines --name pipelines --restart always ghcr.io/open-webui/pipelines:main
+  ```
+  
+3. **Deploy containers:**
+  
+  Run the following commands to deploy Weaviate, Open-WebUI and our Pipeline, respectively
+  
+  Weaviate:
+  
+  ```shell
+  docker compose -f compose-weaviate.yaml up -d
+  ```
+  
+  Open-WebUI:
+  
+  ```shell
+  docker compose -f compose-openwebui.yaml up -d
+  ```
+  
+  Pipeline:
+  
+  ```shell
+  docker build -t armms-pipeline ./src/webui_pipeline &&
+  docker run -d--name armms-pipeline --network=host armms-pipeline
+  ```
+  
+4. **Add the pipeline to Open-WebUI:**
+  
+  If you w
+  
+  - Set the API URL to `http://host.docker.internal:9099` and the API key to `0p3n-w3bu!`. Your pipelines should now be active.
 
-Alternatively, you can directly install pipelines from the admin settings by copying and pasting the pipeline URL, provided it doesn't have additional dependencies.
+5. **Manage Configurations:**
+  
+  - In the admin panel, go to **Admin Settings > Pipelines tab**.
+    
+  - Select your desired pipeline and modify the valve values directly from the WebUI.
+    
 
-That's it! You're now ready to build customizable AI integrations effortlessly with Pipelines. Enjoy!
-
-## 📦 Installation and Setup
-
-Get started with Pipelines in a few easy steps:
-
-1. **Ensure Python 3.11 is installed.**
-2. **Clone the Pipelines repository:**
-
-   ```sh
-   git clone https://github.com/open-webui/pipelines.git
-   cd pipelines
-   ```
-
-3. **Install the required dependencies:**
-
-   ```sh
-   pip install -r requirements.txt
-   ```
-
-4. **Start the Pipelines server:**
-
-   ```sh
-   sh ./start.sh
-   ```
-
-Once the server is running, set the OpenAI URL on your client to the Pipelines URL. This unlocks the full capabilities of Pipelines, integrating any Python library and creating custom workflows tailored to your needs.
-
-## 📂 Directory Structure and Examples
-
-The `/pipelines` directory is the core of your setup. Add new modules, customize existing ones, and manage your workflows here. All the pipelines in the `/pipelines` directory will be **automatically loaded** when the server launches.
-
-You can change this directory from `/pipelines` to another location using the `PIPELINES_DIR` env variable.
-
-### Integration Examples
-
-Find various integration examples in the `/examples` directory. These examples show how to integrate different functionalities, providing a foundation for building your own custom pipelines.
-
-## 🎉 Work in Progress
-
-We’re continuously evolving! We'd love to hear your feedback and understand which hooks and features would best suit your use case. Feel free to reach out and become a part of our Open WebUI community!
-
-Our vision is to push **Pipelines** to become the ultimate plugin framework for our AI interface, **Open WebUI**. Imagine **Open WebUI** as the WordPress of AI interfaces, with **Pipelines** being its diverse range of plugins. Join us on this exciting journey! 🌍
+That's it! You're now ready to chat with your Documents AI. Enjoy!

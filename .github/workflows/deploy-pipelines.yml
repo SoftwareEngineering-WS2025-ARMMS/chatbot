@@ -31,6 +31,7 @@ jobs:
         echo "OPENAI_KEY=${{ secrets.OPENAI_KEY }}" >> ./src/webui_pipeline/pipelines/.env
         echo "STORAGE_SERVER=${{ vars.STORAGE_SERVER }}" >> ./src/webui_pipeline/pipelines/.env
         echo "CACHE_EXPIRY_SECONDS=${{ vars.CACHE_EXPIRY_SECONDS }}" >> ./src/webui_pipeline/pipelines/.env
+        echo "WEAVIATE_PORT=${{ vars.WEAVIATE_PORT }}" >> ./src/webui_pipeline/pipelines/.env
 
     - name: Build and Deploy Container
       run: |
