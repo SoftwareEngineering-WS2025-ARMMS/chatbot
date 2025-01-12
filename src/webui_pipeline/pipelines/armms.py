@@ -40,23 +40,20 @@ import jwt
 
 load_dotenv()
 
-STORAGE_SEVER = "https://armms-storage.aorief.com"
-CACHE_EXPIRY = 1800 # 30 minutes
-
 # Generate a signed JWT
-def generate_jwt(user_id):
+def generate_jwt(user_id, secret):
     payload = {
         "sub": user_id,  # Include the provided ID
         "iat": int(time.time()),  # Issued at time
         "exp": int(time.time()) + 3600,  # Expiration time (1 hour from now)
     }
-    token = jwt.encode(payload, os.environ["ARMMS_SECRET"], algorithm="HS256")
+    token = jwt.encode(payload, secret, algorithm="HS256")
     return token
 
 # Send a GET request with the Bearer token
-def send_request(url, user_id):
+def send_request(url, user_id, secret):
     # Generate the JWT
-    token = generate_jwt(user_id)
+    token = generate_jwt(user_id, secret)
     
     # Set up headers
     headers = {
@@ -73,13 +70,17 @@ def send_request(url, user_id):
 
 # Created in order to simplify the switch between OpenAI and tinyllama
 class Model():
-    def __init__(self, model_type):
+    def __init__(self, model_type, key):
+        self.set_up_model(model_type, key)
+
+    def update_config(self, model_type, key):
+        self.set_up_model(model_type, key)
+    
+    def set_up_model(self, model_type, key):
         match model_type:
             case "OpenAI":
-                OPENAI_CONFIG = {
-                    'key': os.environ["OPENAI_KEY"]
-                }
-                self.embedding = OpenAIEmbeddings(model="text-embedding-3-small", api_key=OPENAI_CONFIG['key'])
+                self.embedding = OpenAIEmbeddings(model="text-embedding-3-small", 
+                                                  api_key=key)
                 
                 self.llm = ChatOpenAI(
                                     model="gpt-4o-mini",
@@ -87,25 +88,34 @@ class Model():
                                     max_tokens=None,
                                     timeout=None,
                                     max_retries=2,
-                                    api_key=OPENAI_CONFIG['key']
+                                    api_key=key
                                     # organization="...",
                                     # other params...
                             )
 
 class Store():
-    def __init__(self, model: Model):
+    def __init__(self, model: Model, storage_server, cache_expiry=1800):
         ## Create Client
         self.client = weaviate.connect_to_local(port=8989) 
-        self.embeddings = model.embedding
+        self.model = model
+
+        # Server to retrieve documents from
+        self.storage_server = storage_server
 
         # Small Cache for faster responses
-        # TODO will not be needed when only updated documents are received
+        self.cache_expiry = cache_expiry
         self.cache = {}
     
+    def update_config(self, storage_server, cache_expiry):
+        self.storage_server = storage_server
+        self.cache_expiry = cache_expiry
+    
     def from_documents(self, docs):
-        return WeaviateVectorStore.from_documents(docs, self.embeddings, client=self.client)
+        return WeaviateVectorStore.from_documents(docs, self.model.embeddings, client=self.client)
 
-    def get_retriever(self, oauth_sub):
+    def get_retriever(self, 
+                      oauth_sub,
+                      secret):
         
         # Check if there is a value in the cache and if it is valid... if so, return it
         if oauth_sub in self.cache and self.cache[oauth_sub]["exp"] > int(time.time()):
@@ -116,7 +126,9 @@ class Store():
             documents = []
 
         # Retrieve the ZIP file from the server
-        response = send_request(f"{STORAGE_SEVER}/download_all_after/{time.strftime('%d-%m-%Y-%H:%M:%S', time.gmtime(last_update))}", oauth_sub)
+        response = send_request(f"{self.storage_server}/download_all_after/{time.strftime('%d-%m-%Y-%H:%M:%S', time.gmtime(last_update))}", 
+                                oauth_sub,
+                                secret)
 
         if response.status_code != 200:
             raise RuntimeError("Could not retrieve documents from storage.")
@@ -147,7 +159,7 @@ class Store():
         print("Documents loaded and ready to to be used.")
 
         entry = {
-            "exp": int(time.time()) + CACHE_EXPIRY,
+            "exp": int(time.time()) + self.cache_expiry,
             "last_update": int(time.time()),
             "docs": documents
         }
@@ -191,17 +203,21 @@ class Chain():
 class Pipeline:
 
     class Valves(BaseModel):
-        # TODO have a .example.env file
-        CACHE_EXPIRY_SECONDS : int = 1800 # 30 minutes
+        CACHE_EXPIRY_SECONDS : int = os.environ["CACHE_EXPIRY_SECONDS"]
         STORAGE_SEVER : str = os.environ["STORAGE_SEVER"]
+        OPENAI_KEY : str = os.environ["OPENAI_KEY"]
+        ARMMS_SECRET : str = os.environ["ARMMS_SECRET"]
 
 
     def __init__(self):
         self.valves = self.Valves()
+        # To allow this to be a valve, class Model should allow other types
+        # Note that each model requires other libraries to be set up!!
+        self.model_type = "OpenAI" 
         pass
         
     async def on_startup(self):
-        self.model = Model("OpenAI")
+        self.model = Model(self.model_type, self.valves.OPENAI_KEY)
         self.store = Store(self.model)
 
         self.chain = Chain(self.model, self.store)
@@ -213,6 +229,8 @@ class Pipeline:
         """This function is called when the valves are updated."""
 
         print(f"on_valves_updated:{__name__}")
+        self.model.update_config(self.model_type, self.valves.OPENAI_KEY)
+        self.store.update_config(self.valves.STORAGE_SEVER, self.valves.CACHE_EXPIRY_SECONDS)
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
         print(f"pipe:{__name__}")
@@ -242,7 +260,11 @@ class Pipeline:
 
         # Restore data
         try: 
-            retriever = self.store.get_retriever(oauth_sub)
+            retriever = self.store.get_retriever(
+                oauth_sub,
+                self.valves.STORAGE_SEVER,
+                self.valves.ARMMS_SECRET
+                )
         except RuntimeError:
             return "Error: Could not retrieve files from storage. Have you signed in using the Dashboard?"
 
@@ -254,6 +276,7 @@ class Pipeline:
 
         return answer
 
+# TODO fix main
 def main():
     # Fetch data from MySQL and store in Weaviate
     
