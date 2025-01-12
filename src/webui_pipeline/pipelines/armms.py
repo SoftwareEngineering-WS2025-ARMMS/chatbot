@@ -203,7 +203,7 @@ class Chain():
 class Pipeline:
 
     class Valves(BaseModel):
-        CACHE_EXPIRY_SECONDS : int = os.environ["CACHE_EXPIRY_SECONDS"]
+        CACHE_EXPIRY_SECONDS : int = int(os.environ["CACHE_EXPIRY_SECONDS"])
         STORAGE_SERVER : str = os.environ["STORAGE_SERVER"]
         OPENAI_KEY : str = os.environ["OPENAI_KEY"]
         ARMMS_SECRET : str = os.environ["ARMMS_SECRET"]
@@ -230,7 +230,7 @@ class Pipeline:
 
         print(f"on_valves_updated:{__name__}")
         self.model.update_config(self.model_type, self.valves.OPENAI_KEY)
-        self.store.update_config(self.valves.STORAGE_SERVER, self.valves.CACHE_EXPIRY_SECONDS)
+        self.store.update_config(self.valves.STORAGE_SERVER, int(self.valves.CACHE_EXPIRY_SECONDS))
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
         print(f"pipe:{__name__}")
