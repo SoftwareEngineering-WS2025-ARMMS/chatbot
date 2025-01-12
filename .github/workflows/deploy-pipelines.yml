@@ -29,6 +29,7 @@ jobs:
       run: |
         echo "ARMMS_SECRET=${{ secrets.ARMMS_SECRET }}" >> ./src/webui_pipeline/pipelines/.env
         echo "OPENAI_KEY=${{ secrets.OPENAI_KEY }}" >> ./src/webui_pipeline/pipelines/.env
+        echo "STORAGE_SEVER=${{ vars.STORAGE_SEVER }}" >> ./src/webui_pipeline/pipelines/.env
 
     - name: Build and Deploy Container
       run: |

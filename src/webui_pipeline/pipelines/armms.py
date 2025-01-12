@@ -192,7 +192,7 @@ class Pipeline:
 
     class Valves(BaseModel):
         CACHE_EXPIRY_SECONDS : int = 1800 # 30 minutes
-        STORAGE_SEVER : str
+        STORAGE_SEVER : str = os.environ["STORAGE_SEVER"]
 
 
     def __init__(self):
