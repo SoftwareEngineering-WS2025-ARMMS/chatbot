@@ -218,7 +218,7 @@ class Pipeline:
         
     async def on_startup(self):
         self.model = Model(self.model_type, self.valves.OPENAI_KEY)
-        self.store = Store(self.model)
+        self.store = Store(self.model, self.valves.STORAGE_SERVER, self.valves.CACHE_EXPIRY_SECONDS)
 
         self.chain = Chain(self.model, self.store)
     
