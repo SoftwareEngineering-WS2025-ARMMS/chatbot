@@ -191,13 +191,13 @@ class Chain():
 class Pipeline:
 
     class Valves(BaseModel):
+        # TODO have a .example.env file
         CACHE_EXPIRY_SECONDS : int = 1800 # 30 minutes
         STORAGE_SEVER : str = os.environ["STORAGE_SEVER"]
 
 
     def __init__(self):
-        self.Valves = self.Valves()
-        self.update_valves()
+        self.valves = self.Valves()
         pass
         
     async def on_startup(self):
@@ -208,6 +208,11 @@ class Pipeline:
     
     async def on_shutdown(self):
         self.store.close_connection()
+    
+    async def on_valves_updated(self) -> None:
+        """This function is called when the valves are updated."""
+
+        print(f"on_valves_updated:{__name__}")
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
         print(f"pipe:{__name__}")
