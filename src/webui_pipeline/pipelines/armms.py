@@ -239,7 +239,7 @@ class Pipeline:
 
     def __init__(self):
         self.name = os.environ["PIPELINE_NAME"]
-        self.valves = os.environ["ARMMS_SECRET"]
+        self.valves = self.Valves()
 
         # To allow this to be a valve, class Model should allow other types
         # Note that each model requires other libraries to be set up!!
