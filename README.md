@@ -45,13 +45,15 @@ For a streamlined setup using Docker:
   Now configure the Chatbot. Create the file `./src/webui_pipeline/pipelines/.env` and configure the following variables
   
   ```
+  PIPELINES_NAME=<PIPELINES_NAME>
   OPENAI_KEY=<OPENAI_KEY>
   STORAGE_SERVER=<STORAGE_SERVER>
   ARMMS_SECRET=<ARMMS_SECRET>
   WEAVIATE_PORT=<WEAVIATE_PORT>
   CACHE_EXPIRY_SECONDS=<CACHE_EXPIRY_SECONDS> 
   ```
-  
+  - PIPELINE_NAME that would appear in the Open-WebUI
+
   - OPENAI_KEY is your API key provided by OpenAI
     
   - STORAGE_SERVER is where you are hosting file-dashboard-be
@@ -96,7 +98,7 @@ For a streamlined setup using Docker:
   Pipeline:
   
   ```shell
-  docker build -t armms-pipeline ./src/webui_pipeline &&
+  docker build -t --build-arg PIPELINES_PORT=9099 armms-pipeline ./src/webui_pipeline &&
   docker run -d--name armms-pipeline --network=host armms-pipeline
   ```
   

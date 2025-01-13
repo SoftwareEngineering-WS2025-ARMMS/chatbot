@@ -32,9 +32,23 @@ jobs:
         echo "STORAGE_SERVER=${{ vars.STORAGE_SERVER }}" >> ./src/webui_pipeline/pipelines/.env
         echo "CACHE_EXPIRY_SECONDS=${{ vars.CACHE_EXPIRY_SECONDS }}" >> ./src/webui_pipeline/pipelines/.env
         echo "WEAVIATE_PORT=${{ vars.WEAVIATE_PORT }}" >> ./src/webui_pipeline/pipelines/.env
+        if ${{ github.ref == 'refs/heads/main' }} then
+          echo "PIPELINE_NAME=armms" >> ./src/webui_pipeline/pipelines/.env
+        fi
+        if ${{ github.ref != 'refs/heads/main' }} then
+          echo "PIPELINE_NAME=armms-dev" >> ./src/webui_pipeline/pipelines/.env
+        fi
 
-    - name: Build and Deploy Container
+    - name: Build and Deploy Development/Production Container
       run: |
-        # A directory should be created
-        docker build -t armms-pipeline ./src/webui_pipeline
-        docker run -d -p 9099:9099 --name armms-pipeline --network=host armms-pipeline
+        if ${{ github.ref == 'refs/heads/main' }} then
+          docker build -t --build-arg PIPELINES_PORT=${{ vars.PIPELINES_PROD_PORT }}" armms-pipeline ./src/webui_pipeline
+          docker run -d --name armms-pipeline --network=host armms-pipeline
+        fi
+        
+        # Development Container
+        if ${{ github.ref != 'refs/heads/main' }} then
+          docker build -t --build-arg PIPELINES_PORT=${{ vars.PIPELINES_DEV_PORT }}" armms-dev-pipeline ./src/webui_pipeline
+          docker run -d --name armms-dev-pipeline --network=host armms-dev-pipeline        
+        fi
+
