@@ -48,6 +48,10 @@ jobs:
         then
           echo "PIPELINE_NAME=armms-dev" >> ./src/webui_pipeline/pipelines/.env
         fi
+    
+    - name: Run tests
+      run: |
+        pytest # This is enough because of the uses pytest.ini file
 
     - name: Build and Deploy Development/Production Container
       run: |

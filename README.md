@@ -45,7 +45,7 @@ For a streamlined setup using Docker:
   Now configure the Chatbot. Create the file `./src/webui_pipeline/pipelines/.env` and configure the following variables
   
   ```
-  PIPELINES_NAME=<PIPELINES_NAME>
+  PIPELINE_NAME=<PIPELINES_NAME>
   OPENAI_KEY=<OPENAI_KEY>
   STORAGE_SERVER=<STORAGE_SERVER>
   ARMMS_SECRET=<ARMMS_SECRET>
