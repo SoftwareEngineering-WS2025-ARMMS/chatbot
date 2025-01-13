@@ -181,12 +181,6 @@ class Chain():
         self.model = model
         self.store = store
 
-       
-
-
-
-
-
         #Initial prompt: You are an assistant for question-answering tasks. 
         #Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. 
         #Always start with saying I am happy to assist you
@@ -244,7 +238,10 @@ class Pipeline:
 
 
     def __init__(self):
+        self.name = os.environ["PIPELINE_NAME"]
+        self.id = os.environ["PIPELINE_NAME"]
         self.valves = self.Valves()
+
         # To allow this to be a valve, class Model should allow other types
         # Note that each model requires other libraries to be set up!!
         self.model_type = "OpenAI" 

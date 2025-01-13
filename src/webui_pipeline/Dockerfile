@@ -1,13 +1,14 @@
 FROM python:3.11-slim-bookworm AS base
 
 # Use args
+ARG PIPELINES_PORT
 ARG MINIMUM_BUILD
 ARG USE_CUDA
 ARG USE_CUDA_VER
 
 ## Basis ##
 ENV ENV=prod \
-    PORT=9099 \
+    PORT=${PIPELINES_PORT} \
     # pass build args to the build
     MINIMUM_BUILD=${MINIMUM_BUILD} \
     USE_CUDA_DOCKER=${USE_CUDA} \
@@ -44,6 +45,6 @@ COPY . .
 
 # Expose the port
 ENV HOST="0.0.0.0"
-ENV PORT="9099"
+ENV PORT=${PIPELINES_PORT}
 
 ENTRYPOINT [ "bash", "start.sh" ]
