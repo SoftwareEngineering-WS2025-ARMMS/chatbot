@@ -35,6 +35,7 @@ from dotenv import load_dotenv
 import requests
 import zipfile
 import io
+import os
 
 import jwt
 
@@ -180,12 +181,23 @@ class Chain():
         self.model = model
         self.store = store
 
-        template = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. Always start with saying I am happy to assist you
-        Question: {question}
-        Context: {context}
-        Answer:
-        """
+        prompt_path = os.path.join(os.path.dirname(__file__), "prompt.txt")
+        with open(prompt_path, "r", encoding="utf-8") as file:
+            template = file.read()
+
         self.prompt = ChatPromptTemplate.from_template(template)
+
+
+
+
+        #Initial prompt: You are an assistant for question-answering tasks. 
+        #Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. 
+        #Always start with saying I am happy to assist you
+        #template = """
+        #Question: {question}
+        #Context: {context}
+        #Answer:
+       # """
 
     
     def get_rag_chain(self, retriever):
