@@ -7,7 +7,7 @@ on:
 
 env:
   CONTAINER_NAME: "${{ github.ref == 'refs/heads/main' && 'armms-pipeline' || 'armms-dev-pipeline' }}"
-  CONTAINER_PORT: "${{ github.ref == 'refs/heads/main' && vars.PIPELINES_DEV_PORT || vars.PIPELINES_PROD_PORT }}"
+  CONTAINER_PORT: "${{ github.ref == 'refs/heads/main' && vars.PIPELINES_PROD_PORT || vars.PIPELINES_DEV_PORT }}"
 
 jobs:
   deploy:
