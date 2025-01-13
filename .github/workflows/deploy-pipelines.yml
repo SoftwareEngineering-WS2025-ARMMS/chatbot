@@ -5,6 +5,10 @@ on:
     branches:
       - '**'
 
+env:
+  CONTAINER_NAME: "${{ github.ref == 'refs/heads/main' && 'armms-pipeline' || 'armms-dev-pipeline' }}"
+  CONTAINER_PORT: "${{ github.ref == 'refs/heads/main' && vars.PIPELINES_DEV_PORT || vars.PIPELINES_PROD_PORT }}"
+
 jobs:
   deploy:
     runs-on: self-hosted  # Use the self-hosted runner
@@ -15,14 +19,14 @@ jobs:
 
     - name: Kill Container if exists
       run: |
-        if [ "$(docker ps -q -f name=armms-pipeline)" ]; then
-          docker kill armms-pipeline
+        if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
+          docker kill $CONTAINER_NAME
         fi
     
     - name: Remove Container if exists
       run: |
-        if [ "$(docker ps -aq -f name=armms-pipeline)" ]; then
-          docker rm armms-pipeline
+        if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
+          docker rm $CONTAINER_NAME
         fi
     
     - name: Add env variables
@@ -47,18 +51,7 @@ jobs:
 
     - name: Build and Deploy Development/Production Container
       run: |
+        docker build --build-arg PIPELINES_PORT=$CONTAINER_PORT -t $CONTAINER_NAME ./src/webui_pipeline
+        docker run -d --name $CONTAINER_NAME --network=host $CONTAINER_NAME
 
-        # Production Container
-        if [ ${{ github.ref == 'refs/heads/main' }} ] 
-        then
-          docker build --build-arg PIPELINES_PORT=${{ vars.PIPELINES_PROD_PORT }} -t armms-pipeline ./src/webui_pipeline
-          docker run -d --name armms-pipeline --network=host armms-pipeline
-        fi
-        
-        # Development Container
-        if [ ${{ github.ref != 'refs/heads/main' }} ] 
-        then
-          docker build --build-arg PIPELINES_PORT=${{ vars.PIPELINES_DEV_PORT }} -t armms-dev-pipeline ./src/webui_pipeline
-          docker run -d --name armms-dev-pipeline --network=host armms-dev-pipeline        
-        fi
 
