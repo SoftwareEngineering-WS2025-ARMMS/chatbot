@@ -94,9 +94,15 @@ class Model():
                             )
 
 class Store():
-    def __init__(self, model: Model, storage_server, cache_expiry=1800):
+    def __init__(self, model: Model, storage_server, weaviate_port, cache_expiry=1800):
+        self.configure_store(model, storage_server, weaviate_port, cache_expiry)
+
+    def update_config(self, model, storage_server, weaviate_port, cache_expiry=1800):
+        self.configure_store(model, storage_server, weaviate_port, cache_expiry)
+
+    def configure_store(self, model, storage_server, weaviate_port, cache_expiry=1800):
         ## Create Client
-        self.client = weaviate.connect_to_local(port=8989) 
+        self.client = weaviate.connect_to_local(port=weaviate_port) 
         self.model = model
 
         # Server to retrieve documents from
@@ -106,9 +112,6 @@ class Store():
         self.cache_expiry = cache_expiry
         self.cache = {}
     
-    def update_config(self, storage_server, cache_expiry):
-        self.storage_server = storage_server
-        self.cache_expiry = cache_expiry
     
     def from_documents(self, docs):
         return WeaviateVectorStore.from_documents(docs, self.model.embedding, client=self.client)
@@ -207,6 +210,7 @@ class Pipeline:
         STORAGE_SERVER : str = os.environ["STORAGE_SERVER"]
         OPENAI_KEY : str = os.environ["OPENAI_KEY"]
         ARMMS_SECRET : str = os.environ["ARMMS_SECRET"]
+        WEAVIATE_PORT : int = int(os.environ["WEAVIATE_PORT"])
 
 
     def __init__(self):
@@ -218,7 +222,7 @@ class Pipeline:
         
     async def on_startup(self):
         self.model = Model(self.model_type, self.valves.OPENAI_KEY)
-        self.store = Store(self.model, self.valves.STORAGE_SERVER, self.valves.CACHE_EXPIRY_SECONDS)
+        self.store = Store(self.model, self.valves.STORAGE_SERVER, self.valves.WEAVIATE_PORT, self.valves.CACHE_EXPIRY_SECONDS)
 
         self.chain = Chain(self.model, self.store)
     
@@ -230,7 +234,7 @@ class Pipeline:
 
         print(f"on_valves_updated:{__name__}")
         self.model.update_config(self.model_type, self.valves.OPENAI_KEY)
-        self.store.update_config(self.valves.STORAGE_SERVER, int(self.valves.CACHE_EXPIRY_SECONDS))
+        self.store.update_config(self.model, self.valves.STORAGE_SERVER, int(self.valves.WEAVIATE_PORT), int(self.valves.CACHE_EXPIRY_SECONDS))
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
         print(f"pipe:{__name__}")
