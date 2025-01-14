@@ -286,7 +286,7 @@ class Chain():
             return history
 
 
-        conversational_rag_chain = RunnableWithMessageHistory(
+        return RunnableWithMessageHistory(
             rag_chain,
             get_session_history,
             input_messages_key="input",
