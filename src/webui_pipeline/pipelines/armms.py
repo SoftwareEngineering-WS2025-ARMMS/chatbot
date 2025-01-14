@@ -220,7 +220,7 @@ class Chain():
         self.prompt = ChatPromptTemplate.from_template(template)
 
     
-    def get_rag_chain(self, history, retriever):
+    def get_rag_chain(self, retriever, history):
         rag_chain = (
             {"history": history, "context": retriever, "question": RunnablePassthrough()}
             | self.prompt
