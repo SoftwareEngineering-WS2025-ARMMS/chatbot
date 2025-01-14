@@ -33,6 +33,10 @@ jobs:
         echo "CACHE_EXPIRY_SECONDS=${{ vars.CACHE_EXPIRY_SECONDS }}" >> ./src/webui_pipeline/pipelines/.env
         echo "WEAVIATE_PORT=${{ vars.WEAVIATE_PORT }}" >> ./src/webui_pipeline/pipelines/.env
         echo "PIPELINE_NAME=armms" >> ./src/webui_pipeline/pipelines/.env
+    
+    - name: Run tests
+      run: |
+        pytest # This is enough because of the uses pytest.ini file
 
     - name: Build and Deploy Container
       run: |
