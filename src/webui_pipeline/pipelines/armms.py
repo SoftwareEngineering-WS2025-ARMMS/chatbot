@@ -307,7 +307,7 @@ class Pipeline:
 
         # Perform RAG
         rag = self.chain.get_rag_chain(retriever)
-        answer = rag.invoke(user_message)
+        answer = rag.invoke(messages)
         print("Answer:", answer)
 
         return answer
