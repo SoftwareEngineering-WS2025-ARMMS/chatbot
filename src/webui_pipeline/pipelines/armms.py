@@ -1,5 +1,6 @@
 import weaviate
 import weaviate.classes.config as wc
+import json
 
 from langchain_ollama import OllamaLLM
 from langchain_ollama import OllamaEmbeddings
@@ -307,7 +308,9 @@ class Pipeline:
 
         # Perform RAG
         rag = self.chain.get_rag_chain(retriever)
-        answer = rag.invoke(messages)
+        
+        # TODO this may not always fit in the context window
+        answer = rag.invoke(json.dumps(messages))
         print("Answer:", answer)
 
         return answer
