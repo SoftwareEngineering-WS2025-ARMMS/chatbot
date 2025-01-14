@@ -212,7 +212,6 @@ class Chain():
         Du:
         Ich wünsche dir einen schönen Tag, bis zum nächsten Mal!
 
-        History: {history}
         Question: {question}
         Context: {context}
         Answer:
@@ -220,9 +219,9 @@ class Chain():
         self.prompt = ChatPromptTemplate.from_template(template)
 
     
-    def get_rag_chain(self, retriever, history):
+    def get_rag_chain(self, retriever):
         rag_chain = (
-            {"history": history, "context": retriever, "question": RunnablePassthrough()}
+            {"context": retriever, "question": RunnablePassthrough()}
             | self.prompt
             | self.model.llm
             | StrOutputParser()
@@ -303,10 +302,8 @@ class Pipeline:
         except RuntimeError:
             return "Error: Could not retrieve files from storage. Have you signed in using the Dashboard?"
 
-        print(messages)
-
         # Perform RAG
-        rag = self.chain.get_rag_chain(messages, retriever)
+        rag = self.chain.get_rag_chain(retriever)
         answer = rag.invoke(user_message)
         print("Answer:", answer)
 
