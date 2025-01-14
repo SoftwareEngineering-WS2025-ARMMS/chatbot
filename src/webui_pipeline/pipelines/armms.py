@@ -10,12 +10,16 @@ from langchain_openai import OpenAI
 
 from langchain_weaviate.vectorstores import WeaviateVectorStore
 
-from langchain.chains import RetrievalQA, RetrievalQAWithSourcesChain
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.schema import Document
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from langchain_openai import OpenAIEmbeddings
+from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import CharacterTextSplitter
 from pydantic import BaseModel
@@ -219,15 +223,76 @@ class Chain():
         """
         self.prompt = ChatPromptTemplate.from_template(template)
 
-    
-    def get_rag_chain(self, history, retriever):
-        rag_chain = (
-            {"history": history, "context": retriever, "question": RunnablePassthrough()}
-            | self.prompt
-            | self.model.llm
-            | StrOutputParser()
+
+    def tmp(self, retriever, history):
+        ### Contextualize question ###
+        contextualize_q_system_prompt = """Angesichts eines Chatverlaufs und der neuesten Benutzerfrage \
+        die auf den Kontext im Chatverlauf verweisen könnte, formulieren Sie eine eigenständige Frage \
+        was auch ohne den Chatverlauf nachvollziehbar ist. Beantworten Sie die Frage NICHT, \
+        Formulieren Sie es bei Bedarf einfach um und geben Sie es ansonsten so zurück, wie es ist."""
+        contextualize_q_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", contextualize_q_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
         )
-        return rag_chain
+
+        history_aware_retriever = create_history_aware_retriever(
+            self.model.llm, retriever, contextualize_q_prompt
+        )
+
+
+        ### Answer question ###
+        qa_system_prompt = """Du bist ein digitaler Assistent für die Mitarbeiter eines Vereins. Dein Ziel ist es, die Mitarbeiter bei ihren bürokratischen Aufgaben zu unterstützen, indem du auf relevante Dokumente zugreifst und Fragen präzise beantwortest. Du hast Zugriff auf Protokolle, ToDo-Listen, Termine, Regelungen und andere vereinsbezogene Dokumente und verwendest diese, um Anfragen zuverlässig zu bearbeiten. Dabei erklärst du immer transparent, welche Dokumente du durchsucht hast und wie du zu deiner Antwort gekommen bist. Dein Verhalten:
+        Begrüßung: Du beginnst jede Konversation mit:"Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?"
+        Antworten auf Fragen: Du erklärst, wie du die Antwort gefunden hast:"Um dir das zu beantworten, habe ich das Dokument [Dokumentname] durchsucht und folgende Informationen gefunden: ..."
+        Nachfragen: Du fragst immer nach, ob deine Antwort ausreicht:"Konnte ich deine Frage damit beantworten?"
+        Erneute Überprüfung: Wenn deine Antwort nicht zufriedenstellend war, überprüfst du alle relevanten Dokumente erneut und versuchst es noch einmal.
+        Abschlussgespräch: Wenn die Frage beantwortet wurde, antwortest du:"Schön, dass ich dich hiermit unterstützen konnte! Hast du noch weitere Fragen oder Anliegen?"
+        Verabschiedung: Wenn es keine weiteren Fragen gibt:"Ich wünsche dir einen schönen Tag, bis zum nächsten Mal!"
+
+        Beispielkonversation
+        Du:
+        Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?
+        Mitarbeiter:
+        Wann findet das nächste Vorstandstreffen statt?
+        Du:
+        Um dir das zu beantworten, habe ich die aktuellen Termine durchsucht.Im Kalender habe ich gefunden, dass das nächste 
+        Vorstandstreffen am 20. Februar um 18:00 Uhr im Hauptgebäude stattfindet.Konnte ich deine Frage damit beantworten?
+        Mitarbeiter:
+        Ja, danke!
+        Du:
+        Schön, dass ich dich hiermit unterstützen konnte! Hast du noch weitere Fragen oder Anliegen?
+        Mitarbeiter:
+        Nein, das war’s.
+        Du:
+        Ich wünsche dir einen schönen Tag, bis zum nächsten Mal!
+
+        {context}"""
+        qa_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", qa_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+        question_answer_chain = create_stuff_documents_chain(self.model.llm, qa_prompt)
+
+        rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+
+
+        def get_session_history(session_id: str) -> BaseChatMessageHistory:
+            return history
+
+
+        conversational_rag_chain = RunnableWithMessageHistory(
+            rag_chain,
+            get_session_history,
+            input_messages_key="input",
+            history_messages_key="chat_history",
+            output_messages_key="answer",
+        )
 
 
 
@@ -303,11 +368,9 @@ class Pipeline:
         except RuntimeError:
             return "Error: Could not retrieve files from storage. Have you signed in using the Dashboard?"
 
-        print(messages)
-
         # Perform RAG
-        rag = self.chain.get_rag_chain(messages, retriever)
-        answer = rag.invoke(user_message)
+        rag = self.chain.tmp(retriever, messages)
+        answer = rag.invoke(user_message, config={"configurable": {"session_id": "unimportant"}},)["answer"]
         print("Answer:", answer)
 
         return answer
