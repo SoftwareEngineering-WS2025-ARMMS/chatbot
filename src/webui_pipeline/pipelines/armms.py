@@ -214,7 +214,7 @@ class Chain():
         Ich wünsche dir einen schönen Tag, bis zum nächsten Mal!
 
         Die Beispielskonversation ist nur ein Beispiel, du musst dich nicht wörtlich daran halten. Die sind jetzt nur als tip gegeben
-        
+
         Gebe nur deine Antwort zurück.
 
         Question: {question}
@@ -314,36 +314,8 @@ class Pipeline:
         rag = self.chain.get_rag_chain(retriever)
         
         # TODO this may not always fit in the context window
-        answer = rag.invoke(json.dumps(messages[:-10]))
+        answer = rag.invoke(json.dumps(messages[-10:]))
         print("Answer:", answer)
 
         return answer
-
-# TODO fix main
-def main():
-    # Fetch data from MySQL and store in Weaviate
-    
-    model = Model("OpenAI")
-    store = Store(model)
-    
-    #documents = fetch_bookstack_data()
-    #store.import_data(documents)
-
-    chain = Chain(model, store)
-    rag = chain.get_rag_chain()
-
-    # Run a simple query loop
-    print("Ask questions about the BookStack content (type 'exit' to quit):")
-    while True:
-        query = input("Your question: ")
-        if query.lower() == 'exit':
-            break
-        answer =rag.invoke(query)
-        print("Answer:", answer)
-    
-    store.close_connection()
-
-if __name__ == "__main__":
-    main()
-
 
