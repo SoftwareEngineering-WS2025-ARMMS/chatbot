@@ -281,9 +281,6 @@ class Pipeline:
         body["user_additional_info"] = user
         print(body)
 
-        print("msgs", body["messages"][-10:])
-        print("sent", json.dumps(body["messages"][-10:]))
-
         return body
 
     def pipe(
@@ -320,7 +317,7 @@ class Pipeline:
         rag = self.chain.get_rag_chain(retriever)
         
         # TODO this may not always fit in the context window
-        answer = rag.invoke(user_message)
+        answer = rag.invoke(json.dumps(body["messages"]))
         print("Answer:", answer)
 
         return answer
