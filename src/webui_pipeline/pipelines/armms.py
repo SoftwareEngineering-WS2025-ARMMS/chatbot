@@ -314,6 +314,8 @@ class Pipeline:
         rag = self.chain.get_rag_chain(retriever)
         
         # TODO this may not always fit in the context window
+        print("msgs", messages[-10:])
+        print("sent", json.dumps(messages[-10:]))
         answer = rag.invoke(json.dumps(messages[-10:]))
         print("Answer:", answer)
 
