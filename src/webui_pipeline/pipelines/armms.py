@@ -188,7 +188,8 @@ class Chain():
         #Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. 
         #Always start with saying I am happy to assist you
 
-        prompt_path = os.path.join(os.path.dirname(__file__), "/src/webui_pipeline/pipelines/armms-prompt.txt")
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        prompt_path = os.path.join(my_path, "./armms-prompt.txt")
         with open(prompt_path, "r", encoding="utf-8") as file:
             template = file.read()
 
