@@ -5,10 +5,6 @@ on:
     branches:
       - '**'
 
-env:
-  CONTAINER_NAME: "${{ github.ref == 'refs/heads/main' && 'armms-pipeline' || 'armms-dev-pipeline' }}"
-  CONTAINER_PORT: "${{ github.ref == 'refs/heads/main' && vars.PIPELINES_PROD_PORT || vars.PIPELINES_DEV_PORT }}"
-
 jobs:
   deploy:
     runs-on: self-hosted  # Use the self-hosted runner
@@ -19,14 +15,14 @@ jobs:
 
     - name: Kill Container if exists
       run: |
-        if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
-          docker kill $CONTAINER_NAME
+        if [ "$(docker ps -q -f name=armms-pipeline)" ]; then
+          docker kill armms-pipeline
         fi
     
     - name: Remove Container if exists
       run: |
-        if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
-          docker rm $CONTAINER_NAME
+        if [ "$(docker ps -aq -f name=armms-pipeline)" ]; then
+          docker rm armms-pipeline
         fi
     
     - name: Add env variables
@@ -36,26 +32,17 @@ jobs:
         echo "STORAGE_SERVER=${{ vars.STORAGE_SERVER }}" >> ./src/webui_pipeline/pipelines/.env
         echo "CACHE_EXPIRY_SECONDS=${{ vars.CACHE_EXPIRY_SECONDS }}" >> ./src/webui_pipeline/pipelines/.env
         echo "WEAVIATE_PORT=${{ vars.WEAVIATE_PORT }}" >> ./src/webui_pipeline/pipelines/.env
-        
-        # Production Name
-        if [ ${{ github.ref == 'refs/heads/main' }} ] 
-        then
-          echo "PIPELINE_NAME=armms" >> ./src/webui_pipeline/pipelines/.env
-        fi
-
-        # Development Name
-        if [ ${{ github.ref != 'refs/heads/main' }} ] 
-        then
-          echo "PIPELINE_NAME=armms-dev" >> ./src/webui_pipeline/pipelines/.env
-        fi
+        echo "PIPELINE_NAME=armms" >> ./src/webui_pipeline/pipelines/.env
     
     - name: Run tests
       run: |
+        python3.11 -m venv .venv
+        source ./.venv/bin/activate
+        pip install -r ./src/webui_pipeline/requirements.txt
         pytest # This is enough because of the uses pytest.ini file
 
-    - name: Build and Deploy Development/Production Container
+    - name: Build and Deploy Container
       run: |
-        docker build --build-arg PIPELINES_PORT=$CONTAINER_PORT -t $CONTAINER_NAME ./src/webui_pipeline
-        docker run -d --name $CONTAINER_NAME --network=host $CONTAINER_NAME
-
-
+        # A directory should be created
+        docker build --build-arg PIPELINES_PORT=${{ vars.PIPELINES_PROD_PORT }} -t armms-pipeline ./src/webui_pipeline
+        docker run -d --name armms-pipeline --network=host armms-pipeline

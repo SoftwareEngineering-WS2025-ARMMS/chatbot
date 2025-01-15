@@ -1,5 +1,6 @@
 import weaviate
 import weaviate.classes.config as wc
+import json
 
 from langchain_ollama import OllamaLLM
 from langchain_ollama import OllamaEmbeddings
@@ -19,7 +20,6 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import CharacterTextSplitter
 from pydantic import BaseModel
-
 
 from blueprints.function_calling_blueprint import Pipeline as FunctionCallingBlueprint
 
@@ -187,37 +187,13 @@ class Chain():
         #Initial prompt: You are an assistant for question-answering tasks. 
         #Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. 
         #Always start with saying I am happy to assist you
-        template = """Du bist ein digitaler Assistent für die Mitarbeiter eines Vereins. Dein Ziel ist es, die Mitarbeiter bei ihren bürokratischen Aufgaben zu unterstützen, indem du auf relevante Dokumente zugreifst und Fragen präzise beantwortest. Du hast Zugriff auf Protokolle, ToDo-Listen, Termine, Regelungen und andere vereinsbezogene Dokumente und verwendest diese, um Anfragen zuverlässig zu bearbeiten. Dabei erklärst du immer transparent, welche Dokumente du durchsucht hast und wie du zu deiner Antwort gekommen bist. Dein Verhalten:
-        Begrüßung: Du beginnst jede Konversation mit:"Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?"
-        Antworten auf Fragen: Du erklärst, wie du die Antwort gefunden hast:"Um dir das zu beantworten, habe ich das Dokument [Dokumentname] durchsucht und folgende Informationen gefunden: ..."
-        Nachfragen: Du fragst immer nach, ob deine Antwort ausreicht:"Konnte ich deine Frage damit beantworten?"
-        Erneute Überprüfung: Wenn deine Antwort nicht zufriedenstellend war, überprüfst du alle relevanten Dokumente erneut und versuchst es noch einmal.
-        Abschlussgespräch: Wenn die Frage beantwortet wurde, antwortest du:"Schön, dass ich dich hiermit unterstützen konnte! Hast du noch weitere Fragen oder Anliegen?"
-        Verabschiedung: Wenn es keine weiteren Fragen gibt:"Ich wünsche dir einen schönen Tag, bis zum nächsten Mal!"
 
-        Beispielkonversation
-        Du:
-        Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?
-        Mitarbeiter:
-        Wann findet das nächste Vorstandstreffen statt?
-        Du:
-        Um dir das zu beantworten, habe ich die aktuellen Termine durchsucht.Im Kalender habe ich gefunden, dass das nächste 
-        Vorstandstreffen am 20. Februar um 18:00 Uhr im Hauptgebäude stattfindet.Konnte ich deine Frage damit beantworten?
-        Mitarbeiter:
-        Ja, danke!
-        Du:
-        Schön, dass ich dich hiermit unterstützen konnte! Hast du noch weitere Fragen oder Anliegen?
-        Mitarbeiter:
-        Nein, das war’s.
-        Du:
-        Ich wünsche dir einen schönen Tag, bis zum nächsten Mal!
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        prompt_path = os.path.join(my_path, "./armms-prompt.txt")
+        with open(prompt_path, "r", encoding="utf-8") as file:
+            template = file.read()
 
-        Question: {question}
-        Context: {context}
-        Answer:
-        """
         self.prompt = ChatPromptTemplate.from_template(template)
-
     
     def get_rag_chain(self, retriever):
         rag_chain = (
@@ -273,11 +249,15 @@ class Pipeline:
         # Add user to the body... will be used in the pipe
         body["user_additional_info"] = user
         print(body)
+
         return body
 
     def pipe(
         self, user_message: str, model_id: str, messages: List[dict], body: dict
     ) -> Union[str, Generator, Iterator]:
+        
+        print(messages)
+
         # This is where you can add your custom RAG pipeline.
         # Typically, you would retrieve relevant information from your knowledge base and synthesize it to generate a response.
         
@@ -304,36 +284,10 @@ class Pipeline:
 
         # Perform RAG
         rag = self.chain.get_rag_chain(retriever)
-        answer = rag.invoke(user_message)
+        
+        # TODO this may not always fit in the context window
+        answer = rag.invoke(json.dumps(body["messages"]))
         print("Answer:", answer)
 
         return answer
-
-# TODO fix main
-def main():
-    # Fetch data from MySQL and store in Weaviate
-    
-    model = Model("OpenAI")
-    store = Store(model)
-    
-    #documents = fetch_bookstack_data()
-    #store.import_data(documents)
-
-    chain = Chain(model, store)
-    rag = chain.get_rag_chain()
-
-    # Run a simple query loop
-    print("Ask questions about the BookStack content (type 'exit' to quit):")
-    while True:
-        query = input("Your question: ")
-        if query.lower() == 'exit':
-            break
-        answer =rag.invoke(query)
-        print("Answer:", answer)
-    
-    store.close_connection()
-
-if __name__ == "__main__":
-    main()
-
 
