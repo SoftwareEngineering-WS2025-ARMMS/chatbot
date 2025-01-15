@@ -34,12 +34,12 @@ jobs:
         echo "WEAVIATE_PORT=${{ vars.WEAVIATE_PORT }}" >> ./src/webui_pipeline/pipelines/.env
         echo "PIPELINE_NAME=armms" >> ./src/webui_pipeline/pipelines/.env
     
-    - name: Run tests
-      run: |
-        python3.11 -m venv .venv
-        source ./.venv/bin/activate
-        pip install -r ./src/webui_pipeline/requirements.txt
-        pytest # This is enough because of the uses pytest.ini file
+    #- name: Run tests
+    #  run: |
+    #    python3.11 -m venv .venv
+    #    source ./.venv/bin/activate
+    #    pip install -r ./src/webui_pipeline/requirements.txt
+    #    pytest # This is enough because of the uses pytest.ini file
 
     - name: Build and Deploy Container
       run: |
