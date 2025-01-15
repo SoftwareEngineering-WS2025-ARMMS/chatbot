@@ -19,25 +19,25 @@ class TestPipeline(unittest.TestCase):
 
         This will be then later used by the pipe
         """
-        body = asyncio.run(self.pipeline.inlet({}, {"oauth_sub": "12345"}))
+        body = asyncio.run(self.pipeline.inlet({}, {'messages': [{'role': 'user', 'content': 'Hallo, wie kannst du mir unterstützen'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting?'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting'}], "oauth_sub": "12345"}))
 
         self.assertIn("oauth_sub", body["user_additional_info"])
     
     def test_pipe_no_user(self):
-        answer = self.pipeline.pipe("Hello", "-", "-", {})
+        answer = self.pipeline.pipe("Hello", "-", "-", {'messages': [{'role': 'user', 'content': 'Hallo, wie kannst du mir unterstützen'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting?'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting'}]})
         
         self.assertIn("Error", answer)
     
     def test_pipe_malformed_sub(self):
 
-        body = asyncio.run(self.pipeline.inlet({}, {"oauth_sub": "12345"}))
+        body = asyncio.run(self.pipeline.inlet({}, {"oauth_sub": "12345", 'messages': [{'role': 'user', 'content': 'Hallo, wie kannst du mir unterstützen'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting?'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting'}]}))
         answer = self.pipeline.pipe("Hello", "-", "-", body)
         
         self.assertIn("Error", answer)
     
     def test_pipe_invalid_user(self):
 
-        body = asyncio.run(self.pipeline.inlet({}, {"oauth_sub": "oidc@123"}))
+        body = asyncio.run(self.pipeline.inlet({}, {"oauth_sub": "oidc@123", 'messages': [{'role': 'user', 'content': 'Hallo, wie kannst du mir unterstützen'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting?'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting'}]}))
         answer = self.pipeline.pipe("Hello", "-", "-", body)
         
         self.assertIn("Error", answer)
@@ -45,7 +45,7 @@ class TestPipeline(unittest.TestCase):
 
     def test_pipe_valid_user_connected_to_storage(self):
 
-        body = asyncio.run(self.pipeline.inlet({}, {"oauth_sub": "oidc@8284579b-93a6-49ec-a598-d84440fe5774"}))
+        body = asyncio.run(self.pipeline.inlet({}, {"oauth_sub": "oidc@8284579b-93a6-49ec-a598-d84440fe5774", 'messages': [{'role': 'user', 'content': 'Hallo, wie kannst du mir unterstützen'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting?'}, {'role': 'assistant', 'content': 'Hallo, ich freue mich, dich bei deiner heutigen Tätigkeit im Verein zu unterstützen. Wie kann ich dir helfen?'}, {'role': 'user', 'content': 'Wann war das letzte Meeting'}]}))
         answer = self.pipeline.pipe("Hello", "-", "-", body)
         
         self.assertNotIn("Error", answer)
