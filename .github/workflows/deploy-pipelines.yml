@@ -36,6 +36,9 @@ jobs:
     
     - name: Run tests
       run: |
+        python -m venv .venv
+        source ./.venv/bin/activate
+        pip install -r ./src/webui_pipeline/requirements.txt
         pytest # This is enough because of the uses pytest.ini file
 
     - name: Build and Deploy Container
