@@ -41,5 +41,5 @@ jobs:
     - name: Build and Deploy Container
       run: |
         # A directory should be created
-        docker build --build-arg PIPELINES_PORT=vars.PIPELINES_PROD_PORT -t armms-pipeline ./src/webui_pipeline
+        docker build --build-arg PIPELINES_PORT=${{ vars.PIPELINES_PROD_PORT }} -t armms-pipeline ./src/webui_pipeline
         docker run -d --name armms-pipeline --network=host armms-pipeline
