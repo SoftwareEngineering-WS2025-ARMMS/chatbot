@@ -213,6 +213,10 @@ class Chain():
         Du:
         Ich wünsche dir einen schönen Tag, bis zum nächsten Mal!
 
+        Die Beispielskonversation ist nur ein Beispiel, du musst dich nicht wörtlich daran halten. Die sind jetzt nur als tip gegeben
+        
+        Gebe nur deine Antwort zurück.
+
         Question: {question}
         Context: {context}
         Answer:
@@ -310,7 +314,7 @@ class Pipeline:
         rag = self.chain.get_rag_chain(retriever)
         
         # TODO this may not always fit in the context window
-        answer = rag.invoke(json.dumps(messages))
+        answer = rag.invoke(json.dumps(messages[:-10]))
         print("Answer:", answer)
 
         return answer
